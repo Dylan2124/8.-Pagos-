@@ -12,6 +12,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 /**
@@ -74,10 +75,9 @@ public class PagoService {
     }
 
     @Transactional(readOnly = true)
-    public TransaccionPagoDto obtenerPagoPorId(Long idPago) {
-        TransaccionPago pago = transaccionRepository.findById(idPago)
-                .orElseThrow(() -> new RuntimeException("Transacción de pago no encontrada: " + idPago));
-        return mapToDto(pago);
+    public Optional<TransaccionPagoDto> obtenerPagoPorId(Long idPago) {
+        return transaccionRepository.findById(idPago)
+                .map(this::mapToDto);
     }
 
     private TransaccionPagoDto mapToDto(TransaccionPago transaccion) {
