@@ -10,7 +10,7 @@ La comunicación está protegida por un patrón de Tolerancia a Fallos, por lo q
 **Objetivo:** Validar que al procesar un pago exitoso, `ms-pagos` contacta a `ms-pedido` para actualizar el estado de la compra y a `ms-notificacion` para emitir el comprobante.
 
 *   **Método:** `POST`
-*   **URL:** `http://localhost:8088/api/pagos/procesar`
+*   **URL:** `http://localhost:8088/api/pagos`
 *   **Body (JSON):**
     ```json
     {
