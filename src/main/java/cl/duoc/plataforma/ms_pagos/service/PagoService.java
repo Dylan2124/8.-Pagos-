@@ -2,6 +2,7 @@ package cl.duoc.plataforma.ms_pagos.service;
 
 import cl.duoc.plataforma.ms_pagos.dto.FacturaDto;
 import cl.duoc.plataforma.ms_pagos.dto.TransaccionPagoDto;
+import cl.duoc.plataforma.ms_pagos.dto.PedidoResponseDto;
 import cl.duoc.plataforma.ms_pagos.model.Factura;
 import cl.duoc.plataforma.ms_pagos.model.TransaccionPago;
 import cl.duoc.plataforma.ms_pagos.repository.TransaccionPagoRepository;
