@@ -7,6 +7,9 @@ import cl.duoc.plataforma.ms_pagos.model.TransaccionPago;
 import cl.duoc.plataforma.ms_pagos.repository.TransaccionPagoRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import cl.duoc.plataforma.ms_pagos.client.NotificacionClient;
+import cl.duoc.plataforma.ms_pagos.client.PedidoClient;
+import cl.duoc.plataforma.ms_pagos.dto.NotificacionRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,12 +31,24 @@ import java.util.stream.Collectors;
 public class PagoService {
 
     private final TransaccionPagoRepository transaccionRepository;
+    private final PedidoClient pedidoClient;
+    private final NotificacionClient notificacionClient;
 
     @Transactional
     public TransaccionPagoDto procesarPago(TransaccionPagoDto dto) {
         log.info("Procesando pago para el pedido ID: {} por monto: {}", dto.getIdPedido(), dto.getMonto());
 
         try {
+            // Verificar existencia y total del pedido a traves del Feign Client
+            log.info("Consultando informacion del pedido en ms-pedido...");
+            PedidoResponseDto pedido = pedidoClient.obtenerPedidoPorId(dto.getIdPedido());
+            if (pedido == null) {
+                throw new RuntimeException("El pedido no existe en el sistema.");
+            }
+            if (pedido.getTotal() != null && dto.getMonto() < pedido.getTotal()) {
+                throw new RuntimeException("El monto (" + dto.getMonto() + ") es insuficiente para pagar el total del pedido (" + pedido.getTotal() + ").");
+            }
+
             TransaccionPago transaccion = new TransaccionPago();
             transaccion.setIdPedido(dto.getIdPedido());
             transaccion.setMonto(dto.getMonto());
@@ -58,6 +73,29 @@ public class PagoService {
 
             TransaccionPago saved = transaccionRepository.save(transaccion);
             log.info("Transacción guardada exitosamente con ID: {}", saved.getId());
+
+            // Si el pago es exitoso, actualizamos el estado del pedido en ms-pedido y enviamos notificacion
+            if (aprobado) {
+                try {
+                    pedidoClient.actualizarEstado(dto.getIdPedido(), "PAGADO");
+                    log.info("Estado del pedido ID {} actualizado a PAGADO remotamente en ms-pedido.", dto.getIdPedido());
+                } catch (Exception e) {
+                    log.error("El pago se guardó pero hubo un error comunicando con ms-pedido: {}", e.getMessage());
+                }
+
+                try {
+                    log.info("Enviando notificacion de pago exitoso...");
+                    NotificacionRequest notificacion = NotificacionRequest.builder()
+                            .idPedido(dto.getIdPedido())
+                            .tipo("PAGO_APROBADO")
+                            .mensaje("Su pago por " + dto.getMonto() + " ha sido aprobado y su pedido está en proceso.")
+                            .build();
+                    notificacionClient.enviarNotificacion(notificacion);
+                    log.info("Notificacion enviada exitosamente.");
+                } catch (Exception e) {
+                    log.warn("ATENCION: No se pudo conectar con ms-notificaciones. El pago es valido pero no se envió correo. Error: {}", e.getMessage());
+                }
+            }
 
             return mapToDto(saved);
         } catch (Exception e) {
