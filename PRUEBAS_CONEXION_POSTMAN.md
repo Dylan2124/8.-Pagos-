@@ -16,7 +16,8 @@ La comunicación está protegida por un patrón de Tolerancia a Fallos, por lo q
     {
       "idPedido": 1,
       "monto": 500000,
-      "metodoPago": "WEBPAY"
+      "metodoPago": "WEBPAY",
+      "rutCliente": "19.123.456-7"
     }
     ```
 
