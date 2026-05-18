@@ -40,14 +40,24 @@ public class PagoService {
         log.info("Procesando pago para el pedido ID: {} por monto: {}", dto.getIdPedido(), dto.getMonto());
 
         try {
-            // Verificar existencia y total del pedido a traves del Feign Client
-            log.info("Consultando informacion del pedido en ms-pedido...");
-            PedidoResponseDto pedido = pedidoClient.obtenerPedidoPorId(dto.getIdPedido());
-            if (pedido == null) {
-                throw new RuntimeException("El pedido no existe en el sistema.");
-            }
-            if (pedido.getTotal() != null && dto.getMonto() < pedido.getTotal()) {
-                throw new RuntimeException("El monto (" + dto.getMonto() + ") es insuficiente para pagar el total del pedido (" + pedido.getTotal() + ").");
+            // Verificar existencia y total del pedido a traves del Feign Client (Tolerancia a fallos si ms-pedido está offline)
+            try {
+                log.info("Consultando informacion del pedido en ms-pedido...");
+                PedidoResponseDto pedido = pedidoClient.obtenerPedidoPorId(dto.getIdPedido());
+                if (pedido == null) {
+                    throw new RuntimeException("El pedido no existe en el sistema.");
+                }
+                if (pedido.getTotal() != null && dto.getMonto() < pedido.getTotal()) {
+                    throw new RuntimeException("El monto (" + dto.getMonto() + ") es insuficiente para pagar el total del pedido (" + pedido.getTotal() + ").");
+                }
+            } catch (RuntimeException e) {
+                // Si el mensaje es uno de nuestros errores de negocio, lo propagamos
+                if (e.getMessage() != null && (e.getMessage().contains("El pedido no existe") || e.getMessage().contains("insuficiente"))) {
+                    throw e;
+                }
+                log.error("El pago se guardó pero hubo un error comunicando con ms-pedido: {}", e.getMessage());
+            } catch (Exception e) {
+                log.error("El pago se guardó pero hubo un error comunicando con ms-pedido: {}", e.getMessage());
             }
 
             TransaccionPago transaccion = new TransaccionPago();
@@ -99,6 +109,12 @@ public class PagoService {
             }
 
             return mapToDto(saved);
+        } catch (RuntimeException e) {
+            if (e.getMessage() != null && (e.getMessage().contains("El pedido no existe") || e.getMessage().contains("insuficiente"))) {
+                throw e;
+            }
+            log.error("Error al procesar el pago: {}", e.getMessage(), e);
+            throw new RuntimeException("Error interno al procesar transacción", e);
         } catch (Exception e) {
             log.error("Error al procesar el pago: {}", e.getMessage(), e);
             throw new RuntimeException("Error interno al procesar transacción", e);

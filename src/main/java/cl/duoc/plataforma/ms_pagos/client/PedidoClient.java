@@ -7,7 +7,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
-@FeignClient(name = "ms-pedido", url = "http://localhost:8081/api/pedidos")
+@FeignClient(name = "ms-pedido", url = "http://localhost:8086/api/pedidos")
 public interface PedidoClient {
 
     @GetMapping("/{idPedido}")
