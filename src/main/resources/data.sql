@@ -3,7 +3,6 @@
 -- Ejecuta esto en phpMyAdmin sobre la BD: db_pagos
 -- =========================================================
 
-USE db_pagos;
 
 -- ---------------------------------------------------------
 -- CASUÍSTICA DE PAGOS
